@@ -23,9 +23,8 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.setblocking(0)
 
 # Bind the socket to the port
-IP=''
-PORT=9001
-
+IP='192.168.43.65'
+PORT=9015
 print (color_message.BOLD + color_message.OKBLUE + 'starting up on %s port %s' % (IP, PORT) + color_message.ENDC)
 server_socket.bind((IP, PORT))
 
@@ -41,6 +40,8 @@ outputs = [ ]
 message_queues={}
 # save session for each client in the format of a Dict('uname','privatechat','chatroom_message'
 clients_sessions={}
+
+
 
 
 # ###########################
@@ -68,32 +69,54 @@ while inputs:
             if message:
                 if 'uname' not in clients_sessions[s]:
                     clients_sessions[s]['uname'] = message.decode("UTF-8")
+                    for client in inputs:
+                        if client != server_socket and client != s:
+                            client.send(bytes(color_message.OKGREEN + "{0} enter the room...".format(clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
+
 
                 now = datetime.datetime.now()
                 message=message_prefix.format(now.strftime("%Y-%m-%d %H:%M:%S"),str(clients_sessions[s]['uname']),message.decode("utf-8"))
-                message_queues[s].put(message)
-                if s not in outputs:
-                    outputs.append(s)
+                # message_queues[s].put(message)
+                # add new messages to all user queues
+                for key in message_queues.keys():
+                    message_queues[key].put(message + '\n')
+                # if s not in outputs:
+                #     outputs.append(s)
+                for r in readble:
+                    if r not in outputs:
+                        outputs.append(r)
+
+                for client in inputs :
+                    if client!= server_socket and client!=s:
+                        client.send(bytes(message,"utf-8"))
+
 
             # A readable socket without data available is from a client that
             # has disconnected, and the stream is ready to be closed.
             else:
                 print(color_message.YELLOW + "{0} left the room".format(s.getpeername()) + color_message.ENDC)
+                # tell others someone left the room
+                for client in inputs:
+                    if client != server_socket and client != s:
+                        client.send(bytes(color_message.RED + "{0} left the room...".format(
+                            clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
+
                 if s in outputs:
                     outputs.remove(s)
                 inputs.remove(s)
                 del message_queues[s]
                 s.close()
 
-    for s in writable:
-        try:
-            next_msg=message_queues[s].get_nowait()
 
-            s.send(bytes(next_msg,"utf-8"))
-        except queue.Empty:
-            # print("output queue for {0} is empty".format(s.getpeername()))
-            # TODO: find the reason why this line is needed
-            outputs.remove(s)
+    # for s in writable:
+    #     try:
+    #         next_msg=message_queues[s].get_nowait()
+    #
+    #         s.send(bytes(next_msg,"utf-8"))
+    #     except queue.Empty:
+    #         # print("output queue for {0} is empty".format(s.getpeername()))
+    #         # TODO: find the reason why this line is needed
+    #         outputs.remove(s)
     for s in exceptional:
         if s in outputs:
             outputs.remove(s)
