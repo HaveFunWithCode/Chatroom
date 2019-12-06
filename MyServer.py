@@ -24,7 +24,7 @@ server_socket.setblocking(0)
 
 # Bind the socket to the port
 IP='192.168.43.65'
-PORT=9015
+PORT=9021
 print (color_message.BOLD + color_message.OKBLUE + 'starting up on %s port %s' % (IP, PORT) + color_message.ENDC)
 server_socket.bind((IP, PORT))
 
@@ -41,6 +41,11 @@ message_queues={}
 # save session for each client in the format of a Dict('uname','privatechat','chatroom_message'
 clients_sessions={}
 
+def find_client(clients_sessions,name):
+    for k in clients_sessions:
+        if clients_sessions[k]['uname']==name:
+            return k
+    return None
 
 
 
@@ -67,34 +72,52 @@ while inputs:
             message=s.recv(1024)
 
             if message:
-                if 'uname' not in clients_sessions[s]:
-                    clients_sessions[s]['uname'] = message.decode("UTF-8")
-                    for client in inputs:
-                        if client != server_socket and client != s:
-                            client.send(bytes(color_message.OKGREEN + "{0} enter the room...".format(clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
+                if not str(message.decode("UTF-8")).startswith('call:') :
+                    if 'uname' not in clients_sessions[s]:
+                        clients_sessions[s]['uname'] = message.decode("UTF-8")
+                        for client in inputs:
+                            if client != server_socket and client != s:
+                                client.send(bytes(color_message.OKGREEN + "{0} enter the room...".format(clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
 
 
-                now = datetime.datetime.now()
-                message=message_prefix.format(now.strftime("%Y-%m-%d %H:%M:%S"),str(clients_sessions[s]['uname']),message.decode("utf-8"))
-                # message_queues[s].put(message)
-                # add new messages to all user queues
-                for key in message_queues.keys():
-                    message_queues[key].put(message + '\n')
-                # if s not in outputs:
-                #     outputs.append(s)
-                for r in readble:
-                    if r not in outputs:
-                        outputs.append(r)
+                    now = datetime.datetime.now()
+                    message=message_prefix.format(now.strftime("%Y-%m-%d %H:%M:%S"),str(clients_sessions[s]['uname']),message.decode("utf-8"))
+                    # message_queues[s].put(message)
+                    # add new messages to all user queues
+                    for key in message_queues.keys():
+                        message_queues[key].put(message + '\n')
+                    # if s not in outputs:
+                    #     outputs.append(s)
+                    for r in readble:
+                        if r not in outputs:
+                            outputs.append(r)
 
-                for client in inputs :
-                    if client!= server_socket and client!=s:
-                        client.send(bytes(message,"utf-8"))
+                    for client in inputs :
+                        if client!= server_socket and client!=s:
+                            client.send(bytes(message,"utf-8"))
+                else:
+                    uname=message.decode("UTF-8")[5:]
+                    user=find_client(clients_sessions,uname)
+                    if user != None:
+                        if 'pv' not in clients_sessions[user]:
+                            clients_sessions[user]['pv']=s
+                            clients_sessions[s]['pv']=user
+                            # open subprocess for both
+                            user.send(bytes("call:{0}".format(clients_sessions[s]['uname']),"UTF-8"))
+                        else:
+                            s.send(bytes("{0} is busy!".format(uname)))
+                    else:
+                        s.send(bytes("Wrong username!","UTF-8"))
+                    # find user
 
 
             # A readable socket without data available is from a client that
             # has disconnected, and the stream is ready to be closed.
             else:
                 print(color_message.YELLOW + "{0} left the room".format(s.getpeername()) + color_message.ENDC)
+                # TODO: remove user pv variable
+                # clients_sessions[user]['pv'] = s
+                # clients_sessions[s]['pv'] = user
                 # tell others someone left the room
                 for client in inputs:
                     if client != server_socket and client != s:

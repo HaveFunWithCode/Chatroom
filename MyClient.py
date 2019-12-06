@@ -1,15 +1,18 @@
+import os
 import socket
 import sys
 import threading
+import subprocess
 
 IP='192.168.43.65'
-PORT=9015
+PORT=9021
 
 client_socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 client_socket.connect((IP,PORT))
 client_socket.setblocking(False)
 
 def send_message():
+    print('for private message to someone, write call:name')
     while True:
         msg=input('->')
         if msg:
@@ -27,7 +30,13 @@ while True:
             if not message:
                 print('connection close!')
                 sys.exit()
-            print(message.decode("utf-8"))
+            if message.decode("utf-8").startswith("call:"):
+                pvname=message[5:]
+                # os.system('clear')
+                print("*--------------------------------------*")
+                print('{0} pv->>'.format(pvname))
+            else:
+                print(message.decode("utf-8"))
     except IOError:
         pass
     # print(message.decode("utf-8"))
