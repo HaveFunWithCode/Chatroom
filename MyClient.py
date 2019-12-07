@@ -5,7 +5,7 @@ import threading
 import subprocess
 
 IP='192.168.1.141'
-PORT=9022
+PORT=9027
 
 client_socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 client_socket.connect((IP,PORT))

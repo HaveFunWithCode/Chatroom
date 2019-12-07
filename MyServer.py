@@ -3,7 +3,11 @@ import select
 import socket
 
 
-
+# TODO: add loger
+# TODO: when someone left do not repeat the message
+# TODO: when someone Enter the room should not print the name in rooms
+# TODO: check duplicate username when someone enter
+# TODO: exit from pv chat do not exit from chatroom
 class color_message:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -22,7 +26,7 @@ server_socket.setblocking(0)
 
 # Bind the socket to the port
 IP='192.168.1.141'
-PORT=9022
+PORT=9027
 print (color_message.BOLD + color_message.OKBLUE + 'starting up on %s port %s' % (IP, PORT) + color_message.ENDC)
 server_socket.bind((IP, PORT))
 
@@ -107,10 +111,15 @@ while input_sockets:
                                 clients_sessions[s]['pv'] = user
                                 # open subprocess for both
                                 user.send(bytes("call:{0}".format(clients_sessions[s]['uname']), "UTF-8"))
+                                # TODO: bug
+                                try:
+                                    s.send(bytes("*-----------------{0}----------------*".format(uname),"utf-8"))
+                                except Exception as ex:
+                                    print(ex)
                             else:
-                                s.send(bytes("{0} is busy!".format(uname)))
+                                s.send(bytes("{0} is busy!".format(uname),"utf-8"))
                         else:
-                            s.send(bytes("{0} is yourself!you can not chat with yourself!!".format(uname)))
+                            s.send(bytes("{0} is yourself!you can not chat with yourself!!".format(uname),"utf-8"))
                     else:
                         s.send(bytes("Wrong username!", "UTF-8"))
                     # find user
