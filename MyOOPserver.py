@@ -178,6 +178,9 @@ class ChatServer(object):
                     del self.clients_sessions[source]['pv']
                     partner.send(bytes("*-------------{0} exit the pv-------------*".format(self.clients_sessions[source]['uname']),"utf-8"))
                     source.send(bytes("*-------------end of private chat-------------*","utf-8"))
+            elif message=="whio()":
+                online_users=["{0}:{1}\n".format(self.clients_sessions[client]['uname'], "busy!" if "pv" in self.clients_sessions[client] else "free") for client in self.clients_sessions]
+                source.send(bytes('\n'.join(online_users)+30*"*","utf-8"))
             else:
                 now = datetime.datetime.now()
                 message = message_prefix.format(now.strftime("%Y-%m-%d %H:%M:%S"),

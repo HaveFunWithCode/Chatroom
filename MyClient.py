@@ -13,7 +13,8 @@ class ChatClient(object):
     def send_message(self):
         print('chatroom Manual:'
               '\n1) for private message to a username, write: call:username \n'
-              '2) for exit the private chat please write: exit()\n ------------------------------------\n')
+              '2) for exit the private chat please write: exit()\n'
+              '3) for observing list of online users please write: whio()\n------------------------------------\n')
         while True:
             msg=input('->')
             if msg:
