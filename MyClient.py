@@ -11,7 +11,9 @@ class ChatClient(object):
         self.client_socket.setblocking(False)
 
     def send_message(self):
-        print('for private message to a username, write: call:username')
+        print('chatroom Manual:'
+              '\n1) for private message to a username, write: call:username \n'
+              '2) for exit the private chat please write: exit()\n3) ------------------------------------\n')
         while True:
             msg=input('->')
             if msg:
