@@ -3,11 +3,15 @@ import select
 import socket
 
 
+# TODO: exit from pv chat do not exit from chatroom
 # TODO: add loger
 # TODO: when someone left do not repeat the message
 # TODO: when someone Enter the room should not print the name in rooms
+
 # TODO: check duplicate username when someone enter
-# TODO: exit from pv chat do not exit from chatroom
+import threading
+
+
 class color_message:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -26,7 +30,7 @@ server_socket.setblocking(0)
 
 # Bind the socket to the port
 IP='192.168.1.141'
-PORT=9027
+PORT=9030
 print (color_message.BOLD + color_message.OKBLUE + 'starting up on %s port %s' % (IP, PORT) + color_message.ENDC)
 server_socket.bind((IP, PORT))
 
@@ -41,6 +45,7 @@ outputs = [ ]
 
 # save session for each client in the format of a Dict('uname','privatechat','chatroom_message',target)
 # target :(if 'privatechat' have something in it target =privatechat else send message to all)
+
 clients_sessions={}
 
 def find_client(clients_sessions,name):
@@ -48,6 +53,31 @@ def find_client(clients_sessions,name):
         if clients_sessions[k]['uname']==name:
             return k
     return None
+
+def check_duplicated_user(username):
+    is_duplicated=False
+    for client in clients_sessions:
+        if clients_sessions[client]['uname']==username:
+            is_duplicated=True
+            break
+    return is_duplicated
+
+def authenticate_user(client_socket):
+    while client_socket not in clients_sessions :
+        username=client_socket.recv(1024)
+        if not check_duplicated_user(username):
+
+            clients_sessions[client_socket] = {}
+            input_sockets.append(client_socket)
+            client_socket.send(bytes('welcome to chatroom!', "UTF-8"))
+            break
+        else:
+            client_socket.send(bytes('your username is duplicated!', "UTF-8"))
+
+
+
+
+
 
 
 
@@ -61,11 +91,14 @@ while input_sockets:
     for s in readble:
         if s is server_socket:
             client_socket, client_address=s.accept()
-            print(color_message.OKGREEN + "{0} enter the room...".format(client_address) + color_message.ENDC)
+            print(color_message.OKGREEN + "{0} enter the server...".format(client_address) + color_message.ENDC)
             client_socket.setblocking(0)
             input_sockets.append(client_socket)
-            client_socket.send(bytes('welcom...Enter your username',"UTF-8"))
-            clients_sessions[client_socket]={}
+            client_socket.send(bytes('welcom...Enter your username', "UTF-8"))
+            clients_sessions[client_socket] = {}
+            # auth_thread = threading.Thread(target=authenticate_user,args=[client_socket])
+            # auth_thread.start()
+
 
 
         else:
@@ -89,6 +122,7 @@ while input_sockets:
                     for r in readble:
                         if r not in outputs:
                             outputs.append(r)
+
 
                     # check this message is pv or broadcast
                     if 'pv' in clients_sessions[s]:

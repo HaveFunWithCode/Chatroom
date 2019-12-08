@@ -1,15 +1,14 @@
 import datetime
 import socket
-import threading
 
 from utilities import color_message
 from utilities import message_prefix
 from utilities import loger
 import select
 
-# TODO:bug exit from pv chat do not exit from chatroom
-# TODO:bug when someone left do not repeat the message
+
 # TODO:bug check duplicate username when someone enter
+# TODO: bug left the room close all connection(some situation)
 
 class ChatServer(object):
 
@@ -48,67 +47,65 @@ class ChatServer(object):
     #         else:
     #             client_socket.send(bytes('your username is duplicated!', "UTF-8"))
     def run(self):
-       try:
-           while self.input_sockets:
-               self.readble, _, self.exceptional = select.select(
-                   self.input_sockets, [], self.input_sockets)
-               for s in self.readble:
-                   if s is self.server_socket:
-                       client_socket, client_address = s.accept()
-                       print(color_message.OKGREEN + "{0} enter the server...".format(
-                           client_address) + color_message.ENDC)
-                       client_socket.setblocking(0)
-                       self.input_sockets.append(client_socket)
-                       self.clients_sessions[client_socket] = {}
-                       client_socket.send(bytes('welcom...Enter your username', "UTF-8"))
+        while self.input_sockets:
+            self.readble, _, self.exceptional = select.select(
+                self.input_sockets, [], self.input_sockets)
+            for s in self.readble:
+                if s is self.server_socket:
+                    client_socket, client_address = s.accept()
+                    print(color_message.OKGREEN + "{0} enter the server...".format(
+                        client_address) + color_message.ENDC)
+                    client_socket.setblocking(0)
+                    self.input_sockets.append(client_socket)
+                    self.clients_sessions[client_socket] = {}
+                    client_socket.send(bytes('welcom...Enter your username', "UTF-8"))
 
-                       # thread_auth=threading.Thread(target=self.authenticate_user,args=[client_socket])
-                       # thread_auth.start()
+                    # thread_auth=threading.Thread(target=self.authenticate_user,args=[client_socket])
+                    # thread_auth.start()
 
 
-                   else:
-                       try:
-                           message = s.recv(1024).decode("UTF-8")
-                       except Exception as a:
-                           print(a)
-                       if message:
-                           self.message_handler(s, message)
-                       # A readable socket without data available is from a client that
-                       # has disconnected, and the stream is ready to be closed.
-                       else:
-                           print(color_message.YELLOW + "{0} left the room".format(s.getpeername()) + color_message.ENDC)
+                else:
+                    try:
+                        message = s.recv(1024).decode("UTF-8")
+                    except Exception as a:
+                        print(a)
+                    if message:
+                        self.message_handler(s, message)
+                    # A readable socket without data available is from a client that
+                    # has disconnected, and the stream is ready to be closed.
+                    else:
+                        print(color_message.YELLOW + "{0} left the room".format(s.getpeername()) + color_message.ENDC)
 
-                           # ----------------------------------------
-                           # tell others someone left the room
-                           for client in self.input_sockets:
+                        # ----------------------------------------
+                        # tell others someone left the room
+                        for client in self.input_sockets:
 
-                               if client in self.clients_sessions and 'pv' not in self.clients_sessions[client]:
-                                   if client != self.server_socket and client != s:
-                                       client.send(bytes(color_message.RED + "{0} left the room...".format(
-                                           self.clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
-                               else:
-                                   target = self.clients_sessions[s]['pv']
-                                   target.send(bytes(color_message.RED + "------{0} left the pv-------".format(
-                                       self.clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
-                                   try:
-                                       del self.clients_sessions[target]['pv']
-                                   except KeyError:
+                            if client in self.clients_sessions and 'pv' not in self.clients_sessions[client]:
+                                if client != self.server_socket and client != s:
+                                    client.send(bytes(color_message.RED + "{0} left the room...".format(
+                                        self.clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
+                            else:
+                                try:
+                                    target = self.clients_sessions[s]['pv']
+                                    target.send(bytes(color_message.RED + "------{0} left the pv-------".format(
+                                        self.clients_sessions[s]['uname']) + color_message.ENDC, "utf-8"))
 
-                                       print("error")
-                           # if s have someone in pv remove it
+                                    del self.clients_sessions[target]['pv']
+                                except KeyError:
 
-                           del self.clients_sessions[s]
-                           # remove user from room
-                           self.input_sockets.remove(s)
-                           s.close()
+                                    print("error")
+                        # if s have someone in pv remove it
 
-               for s in self.exceptional:
-                   loger('log.txt', '{0} had problem in connection'.format(s))
-                   self.input_sockets.remove(s)
-                   del self.clients_sessions[s]
-                   s.close()
-       except Exception as ex:
-           self.server_socket.close()
+                        del self.clients_sessions[s]
+                        # remove user from room
+                        self.input_sockets.remove(s)
+                        s.close()
+
+            for s in self.exceptional:
+                loger('log.txt', '{0} had problem in connection'.format(s))
+                self.input_sockets.remove(s)
+                del self.clients_sessions[s]
+                s.close()
     def find_client(self,username):
         for k in self.clients_sessions:
             if self.clients_sessions[k]['uname'] == username:
@@ -120,7 +117,7 @@ class ChatServer(object):
         request someone to start private chat|
         private message|
         broadcast message|
-        TODO: exit from pv and return to room
+
         '''
 
         #situation 1 : message: username
