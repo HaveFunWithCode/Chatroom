@@ -5,7 +5,7 @@ import threading
 import subprocess
 
 IP='192.168.1.141'
-PORT=9027
+PORT=9030
 
 client_socket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 client_socket.connect((IP,PORT))
@@ -23,15 +23,17 @@ def send_message():
 # print(message.decode('utf-8'))
 t1=threading.Thread(target=send_message)
 t1.start()
+# TODO: ask! why 2 while?!
+
 while True:
     try:
         while True:
-            message=client_socket.recv(1024)
+            message = client_socket.recv(1024)
             if not message:
                 print('connection close!')
                 sys.exit()
             if message.decode("utf-8").startswith("call:"):
-                pvname=message[5:]
+                pvname = message[5:]
                 # os.system('clear')
                 print("*--------------------------------------*")
                 print('{0} pv->>'.format(pvname))
