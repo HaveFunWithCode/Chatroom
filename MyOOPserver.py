@@ -7,7 +7,9 @@ from utilities import message_prefix
 from utilities import loger
 import select
 
-
+# TODO:bug exit from pv chat do not exit from chatroom
+# TODO:bug when someone left do not repeat the message
+# TODO:bug check duplicate username when someone enter
 
 class ChatServer(object):
 
@@ -75,7 +77,7 @@ class ChatServer(object):
                        # has disconnected, and the stream is ready to be closed.
                        else:
                            print(color_message.YELLOW + "{0} left the room".format(s.getpeername()) + color_message.ENDC)
-                           # TODO: remove user pv variable
+
                            # ----------------------------------------
                            # tell others someone left the room
                            for client in self.input_sockets:
@@ -172,6 +174,13 @@ class ChatServer(object):
                         source.send(bytes("{0} is yourself!you can not chat with yourself!!".format(target_uname), "utf-8"))
                 else:
                     source.send(bytes("Wrong username!", "UTF-8"))
+            elif message=="exit()":
+                if 'pv' in self.clients_sessions[source]:
+                    partner=self.clients_sessions[source]['pv']
+                    del self.clients_sessions[partner]['pv']
+                    del self.clients_sessions[source]['pv']
+                    partner.send(bytes("*-------------{0} exit the pv-------------*".format(self.clients_sessions[source]['uname']),"utf-8"))
+                    source.send(bytes("*-------------end of private chat-------------*","utf-8"))
             else:
                 now = datetime.datetime.now()
                 message = message_prefix.format(now.strftime("%Y-%m-%d %H:%M:%S"),
