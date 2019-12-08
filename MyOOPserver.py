@@ -1,8 +1,12 @@
 import datetime
 import socket
+import threading
+
 from utilities import color_message
 from utilities import message_prefix
+from utilities import loger
 import select
+
 
 
 class ChatServer(object):
@@ -15,25 +19,54 @@ class ChatServer(object):
         self.server_socket.listen(server_capacity)
         self.input_sockets=[self.server_socket]
         # TODO: check is it needed?
-        self.outputs=[]
+        # self.outputs=[]
         self.clients_sessions={}
 
+    def check_duplicated_user(self,username):
+        is_duplicated = False
+        for client in self.clients_sessions:
+            if 'uname' in self.clients_sessions[client] and \
+                    self.clients_sessions[client]['uname'] == username:
+                is_duplicated = True
+                break
+        return is_duplicated
 
+    def authenticate_user(self,client_socket):
+        while client_socket not in self.clients_sessions:
+            username = client_socket.recv(1024)
+            if not self.check_duplicated_user(username):
+
+                # do if username is not repeatative
+                self.input_sockets.append(client_socket)
+                self.clients_sessions[client_socket] = {}
+                client_socket.send(bytes('--------------welcome to chatroom!----------------', "UTF-8"))
+                break
+            else:
+                client_socket.send(bytes('your username is duplicated!', "UTF-8"))
     def run(self):
         while self.input_sockets:
-            self.readble, self.writable, self.exceptional = select.select(
-                self.input_sockets, self.outputs, self.input_sockets)
+            self.readble, _, self.exceptional = select.select(
+                self.input_sockets, [], self.input_sockets)
             for s in self.readble:
                 if s is self.server_socket:
-                    client_socket,client_address=s.accept()
+                    client_socket, client_address = s.accept()
                     print(color_message.OKGREEN + "{0} enter the server...".format(client_address) + color_message.ENDC)
                     client_socket.setblocking(0)
                     self.input_sockets.append(client_socket)
                     client_socket.send(bytes('welcom...Enter your username', "UTF-8"))
                     self.clients_sessions[client_socket] = {}
+                    # thread_auth=threading.Thread(target=self.authenticate_user,args=[client_socket])
+                    # thread_auth.start()
+                    # # do if username is not repeatative
+                    # self.input_sockets.append(client_socket)
+                    # self.clients_sessions[client_socket] = {}
+                    # client_socket.send(bytes('welcom...Enter your username', "UTF-8"))
 
                 else:
-                    message=s.recv(1024).decode("UTF-8")
+                    try:
+                        message=s.recv(1024).decode("UTF-8")
+                    except Exception as a:
+                        print(a)
                     if message:
                         self.message_handler(s,message)
                     # A readable socket without data available is from a client that
@@ -55,6 +88,7 @@ class ChatServer(object):
                                 try:
                                     del self.clients_sessions[target]['pv']
                                 except KeyError:
+
                                     print("error")
                         # if s have someone in pv remove it
 
@@ -64,6 +98,7 @@ class ChatServer(object):
                         s.close()
 
             for s in self.exceptional:
+                loger('log.txt', '{0} had problem in connection'.format(s))
                 self.input_sockets.remove(s)
                 del self.clients_sessions[s]
                 s.close()
@@ -80,8 +115,6 @@ class ChatServer(object):
         private message|
         broadcast message|
         TODO: exit from pv and return to room
-
-
         '''
 
         #situation 1 : message: username
@@ -141,7 +174,7 @@ class ChatServer(object):
 
 if __name__ == "__main__":
 
-    server=ChatServer('192.168.1.141',9031,100)
+    server=ChatServer('192.168.43.65',9032,100)
     server.run()
 
 
