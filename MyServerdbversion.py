@@ -62,8 +62,7 @@ class ChatServer(object):
     def run(self):
         try:
             while self.input_sockets:
-                self.readble, _, self.exceptional = select.select(
-                    self.input_sockets, [], self.input_sockets)
+                self.readble, _, self.exceptional = select.select(self.input_sockets, [], self.input_sockets)
                 for s in self.readble:
                     if s is self.server_socket:
                         client_socket, client_address = s.accept()
@@ -183,7 +182,7 @@ class ChatServer(object):
                     self.dbinstance.user_alter_status(username=username,staus=1)
                     source.send(bytes('--------------welcome to chatroom {0} !----------------'.format(message), "UTF-8"))
                     for client in self.input_sockets:
-                        if client != self.server_socket and client != source:
+                        if client != self.server_socket and client != source and 'uname' in self.clients_sessions[client]:
                             client.send(bytes(color_message.OKGREEN + "----{0} enter the room----".format(
                                 self.clients_sessions[source]['uname']) + color_message.ENDC, "utf-8"))
 
@@ -214,13 +213,34 @@ class ChatServer(object):
                                 if not result:
                                     print("server error in alter status")
                                     loger("log.txt","server error in alter status")
-                                target_client.send(
-                                    bytes("call:{0}".format(self.clients_sessions[source]['uname']), "UTF-8"))
-                                # TODO: bug
-                                try:
-                                    source.send(bytes("*-------------{0}-------------*".format(target_uname), "utf-8"))
-                                except Exception as ex:
-                                    print(ex)
+                                target_client.send(bytes("call:{0}".format(self.clients_sessions[source]['uname']), "UTF-8"))
+                                source.send(bytes("*-------------{0}-------------*".format(target_uname), "utf-8"))
+                                # -----------------------------------load previous chats-----------------------------------------
+                                chats=self.dbinstance.chat_get_list(user1=self.clients_sessions[source]['uname'],user2=target_uname)
+                                # format chats
+                                sourcechats=[]
+                                targetchats=[]
+                                source_name=self.clients_sessions[source]['uname']
+
+                                for chat in chats:
+                                    message_datetime=datetime.datetime.strptime(chat[2], '%Y-%m-%d %H:%M:%S.%f')
+                                    if chat[0]==source_name:
+                                        sourcechats.append((message_datetime,chat[3]))
+                                        targetchats.append((message_datetime,"{0}:{1}".format(source_name,chat[3])))
+                                    else:
+                                        targetchats.append((message_datetime, chat[3]))
+                                        sourcechats.append((message_datetime, "{0}:{1}".format(target_uname, chat[3])))
+
+                                targetchats.sort(key=lambda x: x[0])
+                                sourcechats.sort(key=lambda x: x[0])
+                                targetchats=['({}){}'.format(str(msg[0]),msg[1]) for msg in targetchats]
+                                sourcechats=['({}){}'.format(str(msg[0]),msg[1]) for msg in sourcechats]
+
+                                source.send(bytes('\n'.join(sourcechats),"utf-8"))
+                                target_client.send(bytes('\n'.join(targetchats),"utf-8"))
+
+
+
                             else:
                                 source.send(bytes("{0} is busy!".format(target_uname), "utf-8"))
                         else:
@@ -266,10 +286,10 @@ class ChatServer(object):
                     target_client = self.clients_sessions[source]['pv']
                     target_client.send(bytes(formated_message, "utf-8"))
                 # save message in db
-                    self.dbinstance.chat_insert_single(self.clients_sessions[source]['uname'],
+                    self.dbinstance.chat_insert_bylist([self.clients_sessions[source]['uname'],
                                                         self.clients_sessions[target_client]['uname'],
                                                         str(now),
-                                                        message)
+                                                        message])
                 # situation 4:  broadcast message
                 else:
 
